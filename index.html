@@ -1,22 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IM CLASSY — Image Classifier</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+    #preview { max-width: 320px; margin-top: 16px; display: none; border-radius: 8px; }
+    #results { font-size: 18px; }
+  </style>
 </head>
 <body>
-    <h1>
-        Welcome to IM CLASSY
-    </h1>
+  <h1>IM CLASSY</h1>
+  <p id="status">Loading model…</p>
+  <input type="file" id="fileInput" accept="image/*" disabled>
+  <div><img id="preview" alt="uploaded image"></div>
+  <ul id="results"></ul>
+
+  <script type="module">
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+    const status = document.getElementById('status');
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('preview');
+    const results = document.getElementById('results');
+
+    // STAGE 1 — LOAD: download the engine (this library) + the model weights, once.
+    let classifier;
+    (async () => {
+      classifier = await pipeline('image-classification', 'Xenova/vit-base-patch16-224');
+      status.textContent = 'Model ready — upload an image.';
+      fileInput.disabled = false;
+    })();
+
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      preview.src = URL.createObjectURL(file);
+      preview.style.display = 'block';
+      results.innerHTML = '';
+      status.textContent = 'Classifying…';
+
+      // STAGES 2, 3, 4 — the library preprocesses the image, runs the forward pass,
+      // and postprocesses the raw scores into labels. topk:3 = top 3 guesses.
+      const output = await classifier(preview.src, { topk: 3 });
+
+      status.textContent = 'Done.';
+      for (const { label, score } of output) {
+        const li = document.createElement('li');
+        li.textContent = `${label} — ${(score * 100).toFixed(1)}%`;
+        results.appendChild(li);
+      }
+    });
+  </script>
 </body>
 </html>
-
-
-<!-- echo "# IM_CLASSY" >> README.md
-git init
-git add README.md
-git commit -m "first commit"
-git branch -M main
-git remote add origin https://github.com/shashi2002/IM_CLASSY.git
-git push -u origin main -->
