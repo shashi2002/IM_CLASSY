@@ -3,56 +3,64 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>IM CLASSY — Image Classifier</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
-    #preview { max-width: 320px; margin-top: 16px; display: none; border-radius: 8px; }
-    #results { font-size: 18px; }
-  </style>
+  <title>IM CLASSY — Real-Time Image Classifier</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>IM CLASSY</h1>
-  <p id="status">Loading model…</p>
-  <input type="file" id="fileInput" accept="image/*" disabled>
-  <div><img id="preview" alt="uploaded image"></div>
-  <ul id="results"></ul>
+  <header class="app-header">
+    <h1>IM CLASSY</h1>
+    <p class="subtitle">Point your camera at something and see what the model thinks it is — live, right in your browser.</p>
+  </header>
 
-  <script type="module">
-    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+  <div id="modelStatus" class="model-status">
+    <span id="modelStatusText">Loading model…</span>
+    <div class="progress-track">
+      <div id="modelProgressBar" class="progress-fill" style="width: 0%"></div>
+    </div>
+  </div>
 
-    const status = document.getElementById('status');
-    const fileInput = document.getElementById('fileInput');
-    const preview = document.getElementById('preview');
-    const results = document.getElementById('results');
+  <main class="app-main">
+    <nav class="tabs" role="tablist">
+      <button id="tabCameraBtn" class="tab-btn active" role="tab" aria-selected="true">Camera</button>
+      <button id="tabUploadBtn" class="tab-btn" role="tab" aria-selected="false">Upload Image</button>
+    </nav>
 
-    // STAGE 1 — LOAD: download the engine (this library) + the model weights, once.
-    let classifier;
-    (async () => {
-      classifier = await pipeline('image-classification', 'Xenova/vit-base-patch16-224');
-      status.textContent = 'Model ready — upload an image.';
-      fileInput.disabled = false;
-    })();
+    <section id="cameraPanel" class="panel">
+      <div class="camera-stage">
+        <video id="video" playsinline autoplay muted></video>
+        <div id="cameraPlaceholder" class="camera-placeholder">
+          <p>Camera is off</p>
+        </div>
+        <div id="liveBadge" class="live-badge hidden">● LIVE</div>
+      </div>
 
-    fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+      <div class="camera-controls">
+        <button id="startCameraBtn" class="btn btn-primary" disabled>Start Camera</button>
+        <button id="stopCameraBtn" class="btn btn-secondary hidden">Stop Camera</button>
+        <button id="switchCameraBtn" class="btn btn-ghost hidden" title="Switch between front and back camera">⟳ Switch</button>
+      </div>
 
-      preview.src = URL.createObjectURL(file);
-      preview.style.display = 'block';
-      results.innerHTML = '';
-      status.textContent = 'Classifying…';
+      <div id="cameraError" class="error-box hidden"></div>
 
-      // STAGES 2, 3, 4 — the library preprocesses the image, runs the forward pass,
-      // and postprocesses the raw scores into labels. topk:3 = top 3 guesses.
-      const output = await classifier(preview.src, { topk: 3 });
+      <div id="liveResults" class="results"></div>
+    </section>
 
-      status.textContent = 'Done.';
-      for (const { label, score } of output) {
-        const li = document.createElement('li');
-        li.textContent = `${label} — ${(score * 100).toFixed(1)}%`;
-        results.appendChild(li);
-      }
-    });
-  </script>
+    <section id="uploadPanel" class="panel hidden">
+      <label id="dropZone" for="fileInput" class="drop-zone">
+        <span id="dropZoneText">Click to choose an image, or drag one here</span>
+        <input type="file" id="fileInput" accept="image/*" disabled hidden>
+      </label>
+      <img id="preview" alt="uploaded image">
+      <div id="uploadResults" class="results"></div>
+    </section>
+  </main>
+
+  <canvas id="captureCanvas" hidden></canvas>
+
+  <footer class="app-footer">
+    Model runs entirely on-device (WebAssembly/WebGPU) via <a href="https://github.com/xenova/transformers.js" target="_blank" rel="noopener">transformers.js</a> — no images ever leave your browser.
+  </footer>
+
+  <script type="module" src="app.js"></script>
 </body>
 </html>
